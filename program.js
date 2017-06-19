@@ -1,27 +1,34 @@
 var http = require('http')
-var bl = require('bl')
-var results = []
-var count = 0
-
-function printResults () {
-	for (var i = 0; i < 3; i++)
-		console.log(results[i])
+var url = require('url')
+ 
+function parsetime (time) {
+  return {
+    hour: time.getHours(),
+    minute: time.getMinutes(),
+    second: time.getSeconds()
+  }
 }
-
-function httpGet (index) {
-	http.get(process.argv[2 + index], function(response) {
-  response.pipe(bl(function (err, data) {     // pipe stream to bl (see notation for exercise)  
-      if (err)
-      return console.error(err)
-
-  	results[index] = data.toString()
-  	count++
-
-  	if (count === 3)
-  		printResults()
-
-		}))
-	})
+ 
+function unixtime (time) {
+  return { unixtime : time.getTime() }
 }
-for (var i = 0; i < 3; i++)
-  httpGet(i)
+ 
+var server = http.createServer(function (req, res) {
+  var parsedUrl = url.parse(req.url, true)
+  var time = new Date(parsedUrl.query.iso)
+  var result
+ 
+  if (/^\/api\/parsetime/.test(req.url))
+    result = parsetime(time)
+  else if (/^\/api\/unixtime/.test(req.url))
+    result = unixtime(time)
+ 
+  if (result) {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify(result))
+  } else {
+    res.writeHead(404)
+    res.end()
+  }
+})
+server.listen(Number(process.argv[2]))
